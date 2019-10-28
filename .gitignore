@@ -1,0 +1,9 @@
+*.pyc
+*.swp
+*.egg-info/
+prototypical-networks/results/
+prototypical-networks/data/*/data
+*/dist
+*/build
+*.zip
+tags
