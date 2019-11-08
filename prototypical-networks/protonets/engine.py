@@ -1,5 +1,6 @@
 from tqdm import tqdm
 import torch
+from protonets.models.losses import kl_divergence
 
 class Engine(object):
     def __init__(self):
@@ -20,8 +21,7 @@ class Engine(object):
             'epoch': 0, # epochs done so far
             't': 0, # samples seen so far
             'batch': 0, # samples seen in current epoch
-            'stop': False
-
+            'stop': False,
             # STN specific params
         }
 
@@ -86,6 +86,7 @@ class STNEngine(Engine):
             'stn_optim_method': kwargs['stn_optim_method'],
             'stn_optim_config': kwargs['stn_optim_config'],
             'concat_stn': kwargs['concat_stn'],
+            'kl_div_coeff': kwargs['kl_div_coeff'],
 
             # Extra parameters
             'aux_loss_fn': kwargs['aux_loss_fn'],
@@ -104,14 +105,14 @@ class STNEngine(Engine):
             state['epoch_size'] = len(state['loader'])
 
             for sample in tqdm(state['loader'], desc="Epoch {:d} train".format(state['epoch'] + 1)):
-                # Zero grad it
+                # Zero grad both the STN and model
                 state['model'].zero_grad()
                 state['stn_model'].zero_grad()
 
-                # Sample nd pass through STN first
+                # Sample and pass through STN first
                 state['sample'] = sample
                 self.hooks['on_sample'](state)
-                state_sampled, thetas = state['stn_model'](state['sample'])
+                state_sampled, thetas, info = state['stn_model'](state['sample'])
                 # Concat them if asked to
                 if state['concat_stn']:
                     for key in ['xs']:
@@ -119,9 +120,10 @@ class STNEngine(Engine):
 
                 # get loss from model
                 loss, _ = state['model'].loss(state_sampled)
-                # TODO: Add a loss function later
-                #print(thetas[0])
+                # This part is for STN VAE loss
                 loss = -loss + state['aux_loss_fn'](thetas, state['stn_loss_params'])
+                if 'mean' in info.keys():
+                    loss += state['kl_div_coeff']*kl_divergence(info)
                 loss.backward()
 
                 #print(thetas[0])

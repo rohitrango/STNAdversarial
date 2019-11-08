@@ -32,8 +32,18 @@ class IdentityTransformLoss(nn.Module):
             loss_ = (tr - y)**2
             loss = loss + loss_.sum()
         loss = loss / len(transform)
+        loss = params * loss
         return loss
 
+
+def kl_divergence(info):
+    means = info['mean']
+    logstd = info['logstd']
+    loss = 0
+    for m, ls in zip(means, logstd):
+        s = torch.exp(ls)
+        loss += (m**2 + s**2 - 2*ls - 1).sum()
+    return loss
 
 
 @register_model('nothetaloss')

@@ -62,7 +62,6 @@ def main(opt):
     else:
         engine = Engine()
 
-
     meters = { 'train': { field: tnt.meter.AverageValueMeter() for field in opt['log.fields'] } }
 
     if val_loader is not None:
@@ -155,7 +154,8 @@ def main(opt):
         stn_model = stn_model,
         loader = train_loader,
         aux_loss_fn = aux_loss_fn,
-        stn_loss_params = None,
+        stn_loss_params = opt['train.stn_reg_coeff'],
+        kl_div_coeff = opt['train.stn_kl_div_coeff'],
         concat_stn = opt['train.concat_stn'],
         optim_method = getattr(optim, opt['train.optim_method']),
         optim_config = { 'lr': opt['train.learning_rate'],
