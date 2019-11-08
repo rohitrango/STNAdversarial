@@ -7,3 +7,4 @@ prototypical-networks/data/*/data
 */build
 *.zip
 tags
+__pycache__
