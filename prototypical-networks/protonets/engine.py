@@ -123,6 +123,7 @@ class STNEngine(Engine):
                 # This part is for STN VAE loss
                 loss = -loss + state['aux_loss_fn'](thetas, state['stn_loss_params'])
                 if 'mean' in info.keys():
+                    #print(state['kl_div_coeff']*kl_divergence(info))
                     loss += state['kl_div_coeff']*kl_divergence(info)
                 loss.backward()
 

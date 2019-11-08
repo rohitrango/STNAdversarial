@@ -25,8 +25,11 @@ def main(opt, augment_stn):
     model_opt['log.fields'] = model_opt['log.fields'].split(',')
     if model_opt['run_stn']:
         print("Loading STN here")
-        stn_model = torch.load(opt['model.model_path'].replace('.pt', '_stn.pt'))
-        stn_model.eval()
+        try:
+            stn_model = torch.load(opt['model.model_path'].replace('.pt', '_stn.pt'))
+            stn_model.eval()
+        except:
+            stn_model = None
     else:
         stn_model = None
 

@@ -17,7 +17,7 @@ parser.add_argument('--data.test_query', type=int, default=0, metavar='TESTQUERY
 parser.add_argument('--data.test_episodes', type=int, default=1000, metavar='NTEST',
                     help="number of test episodes per epoch (default: 1000)")
 parser.add_argument('--seed', type=int, default=1234,)
-parser.add_argument('--augment_stn', type=int, required=True,
+parser.add_argument('--augment_stn', type=int, required=1,
                     help='Augment outputs with STN')
 
 args = vars(parser.parse_args())

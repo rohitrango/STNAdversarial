@@ -14,7 +14,7 @@ parser.add_argument('--data.split', type=str, default=default_split, metavar='SP
                     help="split name (default: {:s})".format(default_split))
 parser.add_argument('--data.way', type=int, default=60, metavar='WAY',
                     help="number of classes per episode (default: 60)")
-parser.add_argument('--data.shot', type=int, default=5, metavar='SHOT',
+parser.add_argument('--data.shot', type=int, default=1, metavar='SHOT',
                     help="number of support examples per class (default: 5)")
 parser.add_argument('--data.query', type=int, default=5, metavar='QUERY',
                     help="number of query examples per class (default: 5)")
