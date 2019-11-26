@@ -9,3 +9,4 @@ prototypical-networks/data/*/data
 tags
 __pycache__
 prototypical-networks/data/miniImagenet/
+fewshot/data/
