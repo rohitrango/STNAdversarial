@@ -14,12 +14,10 @@ from few_shot.callbacks import *
 from few_shot.utils import setup_dirs
 from config import PATH
 
-
 setup_dirs()
 assert torch.cuda.is_available()
 device = torch.device('cuda')
 torch.backends.cudnn.benchmark = True
-
 
 ##############
 # Parameters #
@@ -27,9 +25,9 @@ torch.backends.cudnn.benchmark = True
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset')
 parser.add_argument('--distance', default='l2')
-parser.add_argument('--n-train', default=1, type=int)
-parser.add_argument('--n-test', default=1, type=int)
-parser.add_argument('--k-train', default=60, type=int)
+parser.add_argument('--n-train', default=5, type=int)
+parser.add_argument('--n-test', default=5, type=int)
+parser.add_argument('--k-train', default=20, type=int)
 parser.add_argument('--k-test', default=5, type=int)
 parser.add_argument('--q-train', default=5, type=int)
 parser.add_argument('--q-test', default=1, type=int)
@@ -79,7 +77,6 @@ evaluation_taskloader = DataLoader(
 model = get_few_shot_encoder(num_input_channels)
 model.to(device, dtype=torch.double)
 
-
 ############
 # Training #
 ############
@@ -87,14 +84,12 @@ print('Training Prototypical network on {}...'.format(args.dataset))
 optimiser = Adam(model.parameters(), lr=1e-3)
 loss_fn = torch.nn.NLLLoss().cuda()
 
-
 def lr_schedule(epoch, lr):
     # Drop lr every 2000 episodes
     if epoch % drop_lr_every == 0:
         return lr / 2
     else:
         return lr
-
 
 callbacks = [
     EvaluateFewShot(
