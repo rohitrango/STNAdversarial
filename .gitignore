@@ -8,3 +8,4 @@ prototypical-networks/data/*/data
 *.zip
 tags
 __pycache__
+prototypical-networks/data/miniImagenet/

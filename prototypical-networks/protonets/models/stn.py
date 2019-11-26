@@ -28,6 +28,8 @@ class STNv0(nn.Module):
     def __init__(self, xdim, hdim=64, dropout=0.5):
         super(STNv0, self).__init__()
         self.xdim = xdim
+        self.fcx = int(xdim[1] / 4) if xdim[1] == 28 else int(xdim[1]/8)
+        print(self.fcx)
         # get the module
         self.identity_transform = torch.tensor([1, 0, 0, 0, 1, 0], dtype=torch.float)
         self.identity_transform = Variable(self.identity_transform)
@@ -36,9 +38,11 @@ class STNv0(nn.Module):
         module = []
         module.append(conv_block(xdim[0], hdim))
         module.append(conv_block(hdim, hdim))
+        if self.xdim[1] > 28:
+            module.append(conv_block(hdim, hdim))
         module.append(Flatten())
         # This is 7x7
-        module.append(nn.Linear(hdim * 7 * 7, 32))
+        module.append(nn.Linear(hdim * self.fcx * self.fcx, 32))
         module.append(nn.ReLU())
         module.append(nn.Linear(32, 6))
         module.append(nn.Tanh())
@@ -95,6 +99,8 @@ class STNVAE(nn.Module):
         """TODO: to be defined. """
         super(STNVAE, self).__init__()
         self.xdim = xdim
+        self.fcx = int(xdim[1] / 4) if xdim[1] == 28 else int(xdim[1]/8)
+        print(self.fcx)
         # get the module
         self.identity_transform = torch.tensor([1, 0, 0, 0, 1, 0], dtype=torch.float)
         self.identity_transform = Variable(self.identity_transform)
@@ -104,9 +110,11 @@ class STNVAE(nn.Module):
         fc = []
         module.append(conv_block(xdim[0], hdim))
         module.append(conv_block(hdim, hdim))
+        if xdim[1] > 28:
+            module.append(conv_block(hdim, hdim))
         module.append(Flatten())
         # This is 7x7
-        module.append(nn.Linear(hdim * 7 * 7, 64))
+        module.append(nn.Linear(hdim * self.fcx * self.fcx, 64))
         # Get mean variance here
         fc.append(nn.Linear(32, 32))
         fc.append(nn.ReLU())
