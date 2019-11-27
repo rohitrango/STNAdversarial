@@ -36,8 +36,8 @@ parser.add_argument('--q-test', default=1, type=int)
 # STN params
 parser.add_argument('--stn', default=0, type=int)
 parser.add_argument('--dropout', default=0.5, type=float)
-parser.add_argument('--stn_reg_coeff', default=1, type=float)
-parser.add_argument('--stn_hid_dim', default=64, type=int)
+parser.add_argument('--stn_reg_coeff', default=10, type=float)
+parser.add_argument('--stn_hid_dim', default=32, type=int)
 parser.add_argument('--stnlr', default=1e-3, type=float)
 parser.add_argument('--stnweightdecay', default=1e-5, type=float)
 
@@ -52,7 +52,7 @@ if args.dataset == 'omniglot':
     num_input_channels = 1
     drop_lr_every = 20
 elif args.dataset == 'miniImageNet':
-    n_epochs = 80
+    n_epochs = 100
     dataset_class = MiniImageNet
     num_input_channels = 3
     drop_lr_every = 40

@@ -28,7 +28,7 @@ class IdentityTransformLoss(nn.Module):
         y = y.to(transform.device)
         loss = 0
         loss = (transform - y)**2
-        loss = loss.mean()
+        loss = loss.sum(1).mean()
         return loss
 
 
