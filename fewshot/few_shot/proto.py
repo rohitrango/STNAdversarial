@@ -4,7 +4,10 @@ from torch.nn import Module
 from typing import Callable
 
 from few_shot.utils import pairwise_distances
+from few_shot.losses import IdentityTransformLoss
+from few_shot.stn import STNv0
 
+stnidentityloss = IdentityTransformLoss()
 
 def proto_net_episode(model: Module,
                       optimiser: Optimizer,
@@ -15,7 +18,11 @@ def proto_net_episode(model: Module,
                       k_way: int,
                       q_queries: int,
                       distance: str,
-                      train: bool):
+                      train: bool,
+                      stnmodel = None,
+                      stnoptim = None,
+                      args = None,):
+
     """Performs a single training episode for a Prototypical Network.
 
     # Arguments
@@ -38,8 +45,18 @@ def proto_net_episode(model: Module,
         # Zero gradients
         model.train()
         optimiser.zero_grad()
+        if stnmodel:
+            stnmodel.train()
+            stnoptim.zero_grad()
     else:
         model.eval()
+        if stnmodel:
+            stnmodel.eval()
+
+    # If there is an STN, then modify some of the samples
+    theta = info = None
+    if stnmodel:
+        x, theta, info = stnmodel(x)
 
     # Embed all samples
     embeddings = model(x)
@@ -59,7 +76,34 @@ def proto_net_episode(model: Module,
     log_p_y = (-distances).log_softmax(dim=1)
     loss = loss_fn(log_p_y, y)
 
-    # Prediction probabilities are softmax over distances
+    # Calculate the stn loss
+    if stnmodel and train:
+        loss = -loss + args.stn_reg_coeff * stnidentityloss(theta)
+        loss.backward()
+        stnoptim.step()
+
+        # Reset optimizers
+        optimiser.zero_grad()
+
+        # Prediction probabilities are softmax over distances
+        # Embed all samples
+        embeddings = model(x.detach())
+
+        # Samples are ordered by the NShotWrapper class as follows:
+        # k lots of n support samples from a particular class
+        # k lots of q query samples from those classes
+        support = embeddings[:n_shot*k_way]
+        queries = embeddings[n_shot*k_way:]
+        prototypes = compute_prototypes(support, k_way, n_shot)
+
+        # Calculate squared distances between all queries and all prototypes
+        # Output should have shape (q_queries * k_way, k_way) = (num_queries, k_way)
+        distances = pairwise_distances(queries, prototypes, distance)
+
+        # Calculate log p_{phi} (y = k | x)
+        log_p_y = (-distances).log_softmax(dim=1)
+        loss = loss_fn(log_p_y, y)
+
     y_pred = (-distances).softmax(dim=1)
 
     if train:

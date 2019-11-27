@@ -12,6 +12,7 @@ from few_shot.proto import proto_net_episode
 from few_shot.train import fit
 from few_shot.callbacks import *
 from few_shot.utils import setup_dirs
+from few_shot.stn import STNv0
 from config import PATH
 
 setup_dirs()
@@ -31,6 +32,15 @@ parser.add_argument('--k-train', default=20, type=int)
 parser.add_argument('--k-test', default=5, type=int)
 parser.add_argument('--q-train', default=5, type=int)
 parser.add_argument('--q-test', default=1, type=int)
+
+# STN params
+parser.add_argument('--stn', default=0, type=int)
+parser.add_argument('--dropout', default=0.5, type=float)
+parser.add_argument('--stn_reg_coeff', default=1, type=float)
+parser.add_argument('--stn_hid_dim', default=64, type=int)
+parser.add_argument('--stnlr', default=1e-3, type=float)
+parser.add_argument('--stnweightdecay', default=1e-5, type=float)
+
 args = parser.parse_args()
 
 evaluation_episodes = 1000
@@ -51,6 +61,8 @@ else:
 
 param_str = '{}_nt={}_kt={}_qt={}_'.format(args.dataset, args.n_train, args.k_train, args.q_train) + \
             'nv={}_kv={}_qv={}'.format(args.n_test, args.k_test, args.q_test)
+if args.stn:
+    param_str += '_stn'
 
 print(param_str)
 
@@ -70,17 +82,27 @@ evaluation_taskloader = DataLoader(
     num_workers=4
 )
 
-
 #########
 # Model #
 #########
 model = get_few_shot_encoder(num_input_channels)
 model.to(device, dtype=torch.double)
 
+stnmodel = None
+stnoptim = None
+if args.stn:
+    stnmodel = STNv0(xdim=(3, 84, 84), hdim=args.stn_hid_dim)
+    stnmodel.to(device, dtype=torch.double)
+    # Get optimizer
+    stnoptim = Adam(stnmodel.parameters(), lr=args.stnlr,
+            weight_decay=args.stnweightdecay)
+
 ############
 # Training #
 ############
 print('Training Prototypical network on {}...'.format(args.dataset))
+if args.stn:
+    print('Training with STN')
 optimiser = Adam(model.parameters(), lr=1e-3)
 loss_fn = torch.nn.NLLLoss().cuda()
 
@@ -120,6 +142,9 @@ fit(
     callbacks=callbacks,
     metrics=['categorical_accuracy'],
     fit_function=proto_net_episode,
+    stnmodel=stnmodel,
+    stnoptim=stnoptim,
+    args=args,
     fit_function_kwargs={'n_shot': args.n_train, 'k_way': args.k_train, 'q_queries': args.q_train, 'train': True,
                          'distance': args.distance},
 )
