@@ -36,6 +36,7 @@ parser.add_argument('--q-train', default=5, type=int)
 parser.add_argument('--q-test', default=1, type=int)
 
 parser.add_argument('--seed', default=42, type=int)
+parser.add_argument('--suffix', default='', type=str)
 
 # STN params
 parser.add_argument('--stn', default=0, type=int)
@@ -44,6 +45,8 @@ parser.add_argument('--stn_reg_coeff', default=10, type=float)
 parser.add_argument('--stn_hid_dim', default=32, type=int)
 parser.add_argument('--stnlr', default=1e-3, type=float)
 parser.add_argument('--stnweightdecay', default=1e-5, type=float)
+# Add more params
+parser.add_argument('--targetonly', default=0, type=int)
 
 args = parser.parse_args()
 
@@ -52,7 +55,6 @@ np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
-
 
 evaluation_episodes = 1000
 episodes_per_epoch = 100
@@ -76,6 +78,8 @@ param_str = '{}_nt={}_kt={}_qt={}_'.format(args.dataset, args.n_train, args.k_tr
 if args.stn:
     param_str += '_stn_{}'.format(args.stn_reg_coeff)
 
+if args.suffix != '':
+    param_str += '_{}'.format(args.suffix)
 print(param_str)
 
 ###################
@@ -104,7 +108,7 @@ model = nn.DataParallel(model)
 stnmodel = None
 stnoptim = None
 if args.stn:
-    stnmodel = STNv0(xdim=(3, 84, 84), hdim=args.stn_hid_dim)
+    stnmodel = STNv0(xdim=(3, 84, 84), hdim=args.stn_hid_dim, args=args)
     stnmodel.to(device, dtype=torch.double)
     stnmodel = nn.DataParallel(stnmodel)
     # Get optimizer

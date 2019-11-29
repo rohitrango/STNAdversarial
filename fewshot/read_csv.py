@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--file', required=True)
-parser.add_argument('--N', default=10, type=int)
+parser.add_argument('--N', default="10", type=str)
 
 args = parser.parse_args()
 

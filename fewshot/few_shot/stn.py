@@ -21,14 +21,19 @@ class Flatten(nn.Module):
 
 
 class STNv0(nn.Module):
-    def __init__(self, xdim, hdim=64, dropout=0.5):
+    def __init__(self, xdim, hdim=64, args=None):
         super(STNv0, self).__init__()
         self.xdim = xdim
+        self.args = args
         self.fcx = int(xdim[1] / 4) if xdim[1] == 28 else int(xdim[1]/8)
         print(self.fcx)
         # get the module
         self.identity_transform = torch.tensor([1, 0, 0, 0, 1, 0], dtype=torch.double)
         self.identity_transform = Variable(self.identity_transform)
+        if args is None:
+            dropout = 0.5
+        else:
+            dropout = args.dropout
         self.dropout = dropout
         print('Using dropout of {} for STN'.format(dropout))
         module = []
@@ -51,7 +56,7 @@ class STNv0(nn.Module):
         self.module[index].weight.data.zero_()
         self.module[index].bias.data.copy_(self.identity_transform)
 
-    def forward(self, sample, dropout=0.5):
+    def forward(self, sample, numsamples=None):
         # do the actual forward passes
         # dropout probability for dropping the final theta and putting
         # default value of [1....10]
@@ -68,6 +73,9 @@ class STNv0(nn.Module):
         # Scale it to have any values
         B = theta.shape[0]
         U = torch.rand(B) <= dropout
+        # Dont modify the support set if asked to
+        if numsamples is not None and self.args.targetonly:
+            U[:numsamples] = True
         theta = theta + 0
         theta[U] = self.identity_transform
         # change the shape

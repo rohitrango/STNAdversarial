@@ -56,7 +56,7 @@ def proto_net_episode(model: Module,
     # If there is an STN, then modify some of the samples
     theta = info = None
     if stnmodel:
-        x, theta, info = stnmodel(x)
+        x, theta, info = stnmodel(x, n_shot*k_way)
 
     # Embed all samples
     embeddings = model(x)
