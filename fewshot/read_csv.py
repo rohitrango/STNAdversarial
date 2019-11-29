@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--file', required=True)
+parser.add_argument('--N', default=10, type=int)
 
 args = parser.parse_args()
 
@@ -23,21 +24,27 @@ epochs = np.arange(len(loss))
 accuracy = np.array(accuracy)
 loss = np.array(loss)
 
-args.file = args.file.replace('.csv', '_stn.csv')
-with open(args.file, 'r') as f:
-    lines = f.read().split('\n')
-    lines = [line for line in lines if line!=""]
-    for i, line in enumerate(lines):
-        if i>0:
-            stnaccuracy.append(float(line.split(',')[-1].strip()))
-            stnloss.append(float(line.split(',')[-2].strip()))
+try:
+    args.file = args.file.replace('.csv', '_stn_{}.csv'.format(args.N))
+    with open(args.file, 'r') as f:
+        lines = f.read().split('\n')
+        lines = [line for line in lines if line!=""]
+        for i, line in enumerate(lines):
+            if i>0:
+                stnaccuracy.append(float(line.split(',')[-1].strip()))
+                stnloss.append(float(line.split(',')[-2].strip()))
+
+    stnloss = np.array(stnloss)
+    stnaccuracy = np.array(stnaccuracy)
+    stnepochs = np.arange(len(stnloss))
+except:
+    stnaccuracy = []
+    stnloss = []
 
 print(loss)
-stnloss = np.array(stnloss)
 print(stnloss)
-stnaccuracy = np.array(stnaccuracy)
-stnepochs = np.arange(len(stnloss))
-
+print(np.max(loss))
+print(np.max(stnloss))
 plt.figure()
 #fig, ax = plt.subplots(1, 2, sharey=True)
 #ax[0].plot(epochs, loss, label="loss")
@@ -48,6 +55,7 @@ plt.figure()
 #ax[1].legend()
 plt.plot(loss)
 plt.plot(stnloss)
+plt.legend(['baseline', 'stn'])
 
 #plt.show()
 plt.savefig('loss.png')

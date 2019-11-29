@@ -70,7 +70,7 @@ def proto_net_episode(model: Module,
 
     # Calculate squared distances between all queries and all prototypes
     # Output should have shape (q_queries * k_way, k_way) = (num_queries, k_way)
-    distances = pairwise_distances(queries, prototypes, distance)
+    distances = pairwise_distances(queries, prototypes, distance, model)
 
     # Calculate log p_{phi} (y = k | x)
     log_p_y = (-distances).log_softmax(dim=1)

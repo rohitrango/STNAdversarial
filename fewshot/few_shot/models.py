@@ -82,13 +82,21 @@ def get_few_shot_encoder(num_input_channels=1) -> nn.Module:
         num_input_channels: Number of color channels the model expects input data to contain. Omniglot = 1,
             miniImageNet = 3
     """
-    return nn.Sequential(
-        conv_block(num_input_channels, 64),
-        conv_block(64, 64),
-        conv_block(64, 64),
-        conv_block(64, 64),
-        Flatten(),
-    )
+    class FewShotEncoder(nn.Module):
+        def __init__(self, num_input_channels):
+            super(FewShotEncoder, self).__init__()
+            self.module = nn.Sequential(
+                    conv_block(num_input_channels, 64),
+                    conv_block(64, 64),
+                    conv_block(64, 64),
+                    conv_block(64, 64),
+                    Flatten(),
+                )
+            self.scale = nn.Parameter(torch.DoubleTensor(1).fill_(1.0), requires_grad=True)
+
+        def forward(self, x):
+            return self.module(x)
+    return FewShotEncoder(num_input_channels)
 
 
 class FewShotClassifier(nn.Module):

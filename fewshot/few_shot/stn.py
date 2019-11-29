@@ -56,6 +56,10 @@ class STNv0(nn.Module):
         # dropout probability for dropping the final theta and putting
         # default value of [1....10]
         self.identity_transform = self.identity_transform.to(sample.device)
+        if self.training:
+            dropout = self.dropout
+        else:
+            dropout = 1
 
         sample = Variable(sample)
         inp_flatten = sample
@@ -63,7 +67,7 @@ class STNv0(nn.Module):
         theta = self.module(inp_flatten)
         # Scale it to have any values
         B = theta.shape[0]
-        U = torch.rand(B) < self.dropout
+        U = torch.rand(B) <= dropout
         theta = theta + 0
         theta[U] = self.identity_transform
         # change the shape

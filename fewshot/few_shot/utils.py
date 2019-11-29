@@ -44,7 +44,8 @@ def setup_dirs():
 
 def pairwise_distances(x: torch.Tensor,
                        y: torch.Tensor,
-                       matching_fn: str) -> torch.Tensor:
+                       matching_fn: str,
+                       model = None) -> torch.Tensor:
     """Efficiently calculate pairwise distances (or other similarity scores) between
     two sets of samples.
 
@@ -56,12 +57,20 @@ def pairwise_distances(x: torch.Tensor,
     n_x = x.shape[0]
     n_y = y.shape[0]
 
+    if model is None:
+        scale = 1
+    else:
+        try:
+            scale = model.module.scale
+        except:
+            scale = model.scale
+
     if matching_fn == 'l2':
         distances = (
                 x.unsqueeze(1).expand(n_x, n_y, -1) -
                 y.unsqueeze(0).expand(n_x, n_y, -1)
         ).pow(2).sum(dim=2)
-        return distances
+        return scale * distances
     elif matching_fn == 'cosine':
         normalised_x = x / (x.pow(2).sum(dim=1, keepdim=True).sqrt() + EPSILON)
         normalised_y = y / (y.pow(2).sum(dim=1, keepdim=True).sqrt() + EPSILON)
@@ -70,12 +79,12 @@ def pairwise_distances(x: torch.Tensor,
         expanded_y = normalised_y.unsqueeze(0).expand(n_x, n_y, -1)
 
         cosine_similarities = (expanded_x * expanded_y).sum(dim=2)
-        return 1 - cosine_similarities
+        return scale * (1 - cosine_similarities)
     elif matching_fn == 'dot':
         expanded_x = x.unsqueeze(1).expand(n_x, n_y, -1)
         expanded_y = y.unsqueeze(0).expand(n_x, n_y, -1)
 
-        return -(expanded_x * expanded_y).sum(dim=2)
+        return -scale * (expanded_x * expanded_y).sum(dim=2)
     else:
         raise(ValueError('Unsupported similarity function'))
 

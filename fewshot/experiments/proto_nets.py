@@ -4,6 +4,8 @@ Reproduce Omniglot results of Snell et al Prototypical networks.
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 import argparse
+from torch import nn
+import numpy as np
 
 from few_shot.datasets import OmniglotDataset, MiniImageNet
 from few_shot.models import get_few_shot_encoder
@@ -33,6 +35,8 @@ parser.add_argument('--k-test', default=5, type=int)
 parser.add_argument('--q-train', default=5, type=int)
 parser.add_argument('--q-test', default=1, type=int)
 
+parser.add_argument('--seed', default=42, type=int)
+
 # STN params
 parser.add_argument('--stn', default=0, type=int)
 parser.add_argument('--dropout', default=0.5, type=float)
@@ -42,6 +46,13 @@ parser.add_argument('--stnlr', default=1e-3, type=float)
 parser.add_argument('--stnweightdecay', default=1e-5, type=float)
 
 args = parser.parse_args()
+
+### Set seed
+np.random.seed(args.seed)
+torch.manual_seed(args.seed)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+
 
 evaluation_episodes = 1000
 episodes_per_epoch = 100
@@ -60,9 +71,10 @@ else:
     raise(ValueError, 'Unsupported dataset')
 
 param_str = '{}_nt={}_kt={}_qt={}_'.format(args.dataset, args.n_train, args.k_train, args.q_train) + \
-            'nv={}_kv={}_qv={}'.format(args.n_test, args.k_test, args.q_test)
+            'nv={}_kv={}_qv={}'.format(args.n_test, args.k_test, args.q_test) + \
+            '_{}'.format(args.seed)
 if args.stn:
-    param_str += '_stn'
+    param_str += '_stn_{}'.format(args.stn_reg_coeff)
 
 print(param_str)
 
@@ -87,12 +99,14 @@ evaluation_taskloader = DataLoader(
 #########
 model = get_few_shot_encoder(num_input_channels)
 model.to(device, dtype=torch.double)
+model = nn.DataParallel(model)
 
 stnmodel = None
 stnoptim = None
 if args.stn:
     stnmodel = STNv0(xdim=(3, 84, 84), hdim=args.stn_hid_dim)
     stnmodel.to(device, dtype=torch.double)
+    stnmodel = nn.DataParallel(stnmodel)
     # Get optimizer
     stnoptim = Adam(stnmodel.parameters(), lr=args.stnlr,
             weight_decay=args.stnweightdecay)
