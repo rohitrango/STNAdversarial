@@ -54,9 +54,17 @@ def proto_net_episode(model: Module,
             stnmodel.eval()
 
     # If there is an STN, then modify some of the samples
-    theta = info = None
+    theta = None
+    info = None
     if stnmodel:
-        x, theta, info = stnmodel(x, n_shot*k_way)
+        if args.targetonly:
+            supnum = n_shot*k_way
+            xsup, thetasup, info = stnmodel(x[:supnum], 1)
+            xtar, thetatar, info = stnmodel(x[supnum:], 0)
+            x = torch.cat([xsup, xtar], 0)
+            theta = torch.cat([thetasup, thetatar], 0)
+        else:
+            x, theta, info = stnmodel(x)
 
     # Embed all samples
     embeddings = model(x)
@@ -78,8 +86,11 @@ def proto_net_episode(model: Module,
 
     # Calculate the stn loss
     if stnmodel and train:
+        #print(loss, stnidentityloss(theta))
         loss = -loss + args.stn_reg_coeff * stnidentityloss(theta)
         loss.backward()
+        #for p in stnmodel.parameters():
+            #print(p.grad)
         stnoptim.step()
 
         # Reset optimizers

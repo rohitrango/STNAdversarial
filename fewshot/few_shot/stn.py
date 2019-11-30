@@ -29,7 +29,7 @@ class STNv0(nn.Module):
         self.fcx = int(xdim[1] / 4) if xdim[1] == 28 else int(xdim[1]/8)
         print(self.fcx)
         # get the module
-        self.identity_transform = torch.tensor([1, 0, 0, 0, 1, 0], dtype=torch.double)
+        self.identity_transform = torch.tensor([[1, 0, 0, 0, 1, 0]], dtype=torch.double)
         self.identity_transform = Variable(self.identity_transform)
         if args is None:
             dropout = 0.5
@@ -55,14 +55,14 @@ class STNv0(nn.Module):
         # initialize weights here
         index = -2
         self.module[index].weight.data.zero_()
-        self.module[index].bias.data.copy_(self.identity_transform)
+        self.module[index].bias.data.copy_(self.identity_transform.squeeze())
 
-    def forward(self, sample, numsamples=None):
+    def forward(self, sample, support=False):
         # do the actual forward passes
         # dropout probability for dropping the final theta and putting
         # default value of [1....10]
         self.identity_transform = self.identity_transform.to(sample.device)
-        if self.training:
+        if self.training and not support:
             dropout = self.dropout
         else:
             dropout = 1
@@ -71,20 +71,18 @@ class STNv0(nn.Module):
         inp_flatten = sample
         # do the forward pass
         theta = self.module(inp_flatten)
-        # Scale it to have any values
-        B = theta.shape[0]
-        U = torch.rand(B) <= dropout
-        # Dont modify the support set if asked to
-        if numsamples is not None and self.args.targetonly:
-            U[:numsamples] = True
         theta = theta + 0
-        theta[U] = self.identity_transform
+
+        # Scale it to have any values
+        B = sample.shape[0]
+        U = torch.rand(B)
+        idx = (U <= dropout).nonzero().squeeze()
+        theta[idx, :] = self.identity_transform
         # change the shape
         theta = theta.view(-1, 2, 3)
         grid = F.affine_grid(theta, inp_flatten.size())
-        x = F.grid_sample(inp_flatten, grid)
-        # put into results
-        results = x
+        results = F.grid_sample(inp_flatten, grid)
+
         transform = theta
         return results, transform, {}
 
@@ -98,7 +96,7 @@ class STNv1(nn.Module):
         self.fcx = int(xdim[1] / 4) if xdim[1] == 28 else int(xdim[1]/8)
         print(self.fcx)
         # get the module
-        self.identity_transform = torch.tensor([1, 0, 0, 0, 1, 0], dtype=torch.double)
+        self.identity_transform = torch.tensor([[1, 0, 0, 0, 1, 0]], dtype=torch.double)
         self.identity_transform = Variable(self.identity_transform)
         if args is None:
             dropout = 0.5
@@ -113,9 +111,7 @@ class STNv1(nn.Module):
             module.append(conv_block(hdim, hdim))
         module.append(Flatten())
         # This is 7x7
-        module.append(nn.Linear(hdim * self.fcx * self.fcx, 32))
-        module.append(nn.ReLU())
-        module.append(nn.Linear(32, 16))
+        module.append(nn.Linear(hdim * self.fcx * self.fcx, 16))
         module.append(nn.ReLU())
         self.module = nn.Sequential(*module)
         # Add modules for scale, rotation, and translation
@@ -123,12 +119,13 @@ class STNv1(nn.Module):
         self.theta = nn.Linear(16, 1)
         self.translation = nn.Linear(16, 2)
 
-    def forward(self, sample, numsamples=None):
+    def forward(self, sample, support=False):
         # do the actual forward passes
         # dropout probability for dropping the final theta and putting
         # default value of [1....10]
         self.identity_transform = self.identity_transform.to(sample.device)
-        if self.training:
+        # Training and this is not the support set
+        if self.training and not support:
             dropout = self.dropout
         else:
             dropout = 1
@@ -165,18 +162,13 @@ class STNv1(nn.Module):
         theta = Theta
 
         # Scale it to have any values
-        U = torch.rand(B) <= dropout
-        # Dont modify the support set if asked to
-        if numsamples is not None and self.args.targetonly:
-            U[:numsamples] = True
-        theta = theta + 0
-        theta[U] = self.identity_transform
+        U = torch.rand(B)
+        idx = (U <= dropout).nonzero().squeeze()
+        theta[idx, :] = self.identity_transform
         # change the shape
         theta = theta.view(-1, 2, 3)
         grid = F.affine_grid(theta, inp_flatten.size())
-        x = F.grid_sample(inp_flatten, grid)
-        # put into results
-        results = x
+        results = F.grid_sample(inp_flatten, grid)
 
         transform = theta
         return results, transform, {}
