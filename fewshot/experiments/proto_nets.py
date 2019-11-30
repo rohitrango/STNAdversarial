@@ -14,7 +14,7 @@ from few_shot.proto import proto_net_episode
 from few_shot.train import fit
 from few_shot.callbacks import *
 from few_shot.utils import setup_dirs
-from few_shot.stn import STNv0
+from few_shot.stn import STNv0, STNv1
 from config import PATH
 
 setup_dirs()
@@ -45,6 +45,13 @@ parser.add_argument('--stn_reg_coeff', default=10, type=float)
 parser.add_argument('--stn_hid_dim', default=32, type=int)
 parser.add_argument('--stnlr', default=1e-3, type=float)
 parser.add_argument('--stnweightdecay', default=1e-5, type=float)
+
+# STNv1 params
+parser.add_argument('--scalediff', default=0.1, type=float)
+parser.add_argument('--theta', default=np.pi, type=float)
+parser.add_argument('--t', default=0.1, type=float)
+parser.add_argument('--fliphoriz', default=0.5, type=float)
+
 # Add more params
 parser.add_argument('--targetonly', default=0, type=int)
 
@@ -107,8 +114,15 @@ model = nn.DataParallel(model)
 
 stnmodel = None
 stnoptim = None
+print(args)
 if args.stn:
-    stnmodel = STNv0(xdim=(3, 84, 84), hdim=args.stn_hid_dim, args=args)
+    if args.stn == 1:
+        stnmodel = STNv0((3, 84, 84), args)
+    elif args.stn == 2:
+        stnmodel = STNv1((3, 84, 84), args)
+        args.stn_reg_coeff = 0
+    else:
+        raise NotImplementedError
     stnmodel.to(device, dtype=torch.double)
     stnmodel = nn.DataParallel(stnmodel)
     # Get optimizer

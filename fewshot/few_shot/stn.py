@@ -21,10 +21,11 @@ class Flatten(nn.Module):
 
 
 class STNv0(nn.Module):
-    def __init__(self, xdim, hdim=64, args=None):
+    def __init__(self, xdim, args):
         super(STNv0, self).__init__()
         self.xdim = xdim
         self.args = args
+        hdim = self.args.stn_hid_dim
         self.fcx = int(xdim[1] / 4) if xdim[1] == 28 else int(xdim[1]/8)
         print(self.fcx)
         # get the module
@@ -84,6 +85,99 @@ class STNv0(nn.Module):
         x = F.grid_sample(inp_flatten, grid)
         # put into results
         results = x
+        transform = theta
+        return results, transform, {}
+
+
+class STNv1(nn.Module):
+    def __init__(self, xdim, args):
+        super(STNv1, self).__init__()
+        hdim = args.stn_hid_dim
+        self.xdim = xdim
+        self.args = args
+        self.fcx = int(xdim[1] / 4) if xdim[1] == 28 else int(xdim[1]/8)
+        print(self.fcx)
+        # get the module
+        self.identity_transform = torch.tensor([1, 0, 0, 0, 1, 0], dtype=torch.double)
+        self.identity_transform = Variable(self.identity_transform)
+        if args is None:
+            dropout = 0.5
+        else:
+            dropout = args.dropout
+        self.dropout = dropout
+        print('Using dropout of {} for STN'.format(dropout))
+        module = []
+        module.append(conv_block(xdim[0], hdim))
+        module.append(conv_block(hdim, hdim))
+        if self.xdim[1] > 28:
+            module.append(conv_block(hdim, hdim))
+        module.append(Flatten())
+        # This is 7x7
+        module.append(nn.Linear(hdim * self.fcx * self.fcx, 32))
+        module.append(nn.ReLU())
+        module.append(nn.Linear(32, 16))
+        module.append(nn.ReLU())
+        self.module = nn.Sequential(*module)
+        # Add modules for scale, rotation, and translation
+        self.scaler = nn.Linear(16, 1)
+        self.theta = nn.Linear(16, 1)
+        self.translation = nn.Linear(16, 2)
+
+    def forward(self, sample, numsamples=None):
+        # do the actual forward passes
+        # dropout probability for dropping the final theta and putting
+        # default value of [1....10]
+        self.identity_transform = self.identity_transform.to(sample.device)
+        if self.training:
+            dropout = self.dropout
+        else:
+            dropout = 1
+
+        sample = Variable(sample)
+        inp_flatten = sample
+        # do the forward pass
+        params = self.module(inp_flatten)
+
+        # Theta, translation and scale
+        eps = self.args.scalediff
+        theta = (torch.tanh(self.theta(params)) * self.args.theta).squeeze()
+        txty  = torch.tanh(self.translation(params)) * self.args.t
+        tx = txty[:, 0]
+        ty = txty[:, 1]
+        scale = (torch.tanh(self.scaler(params)) * eps + 1).squeeze()
+
+        # Horizontal flip
+        flip = torch.rand_like(scale) <= self.args.fliphoriz
+        flip = flip.to(sample.device).double()
+        flip = 1 - 2*flip
+
+        # Get theta
+        B = scale.shape[0]
+        Theta = torch.zeros((B, 6)).double()
+        Theta = Theta.to(sample.device)
+        Theta[:, 0] = scale*flip*torch.cos(theta)
+        Theta[:, 1] = -scale*torch.sin(theta)
+        Theta[:, 2] = tx
+        Theta[:, 3] = scale*flip*torch.sin(theta)
+        Theta[:, 4] = scale*torch.cos(theta)
+        Theta[:, 5] = ty
+        # Back to theta
+        theta = Theta
+
+        # Scale it to have any values
+        U = torch.rand(B) <= dropout
+        # Dont modify the support set if asked to
+        if numsamples is not None and self.args.targetonly:
+            U[:numsamples] = True
+        theta = theta + 0
+        theta[U] = self.identity_transform
+        # change the shape
+        theta = theta.view(-1, 2, 3)
+        grid = F.affine_grid(theta, inp_flatten.size())
+        x = F.grid_sample(inp_flatten, grid)
+        # put into results
+        results = x
+
         transform = theta
         return results, transform, {}
 
