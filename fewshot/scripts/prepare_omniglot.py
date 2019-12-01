@@ -29,7 +29,7 @@ output_shape = (28, 28)
 def handle_characters(alphabet_folder, character_folder, rotate):
     for root, _, character_images in os.walk(character_folder):
         character_name = root.split('/')[-1]
-        mkdir(f'{alphabet_folder}.{rotate}/{character_name}')
+        mkdir('{}.{}/{}'.format(alphabet_folder, rotate, character_name))
         for img_path in character_images:
             # print(root+'/'+img_path)
             img = io.imread(root+'/'+img_path)
@@ -37,8 +37,8 @@ def handle_characters(alphabet_folder, character_folder, rotate):
             img = transform.resize(img, output_shape, anti_aliasing=True)
             img = (img - img.min()) / (img.max() - img.min())
             # print(img.min(), img.max())
-            # print(f'{alphabet_folder}.{rotate}/{character_name}/{img_path}')
-            io.imsave(f'{alphabet_folder}.{rotate}/{character_name}/{img_path}', img)
+            # print('{}.{}/{}/{}'.format(alphabet_folder, rotate, character_name, img_path))
+            io.imsave('{}.{}/{}/{}'.format(alphabet_folder, rotate, character_name, img_path), img)
             # return
 
 
@@ -46,7 +46,7 @@ def handle_alphabet(folder):
     print('{}...'.format(folder.split('/')[-1]))
     for rotate in [0, 90, 180, 270]:
         # Create new folders for each augmented alphabet
-        mkdir(f'{folder}.{rotate}')
+        mkdir('{}.{}'.format(folder, rotate))
         for root, character_folders, _ in os.walk(folder):
             for character_folder in character_folders:
                 # For each character folder in an alphabet rotate and resize all of the images and save

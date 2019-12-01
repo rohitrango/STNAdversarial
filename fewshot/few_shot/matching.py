@@ -119,7 +119,7 @@ def matching_net_predictions(attention: torch.Tensor, n: int, k: int, q: int) ->
         y_pred: Predicted class probabilities
     """
     if attention.shape != (q * k, k * n):
-        raise(ValueError(f'Expecting attention Tensor to have shape (q * k, k * n) = ({q * k, k * n})'))
+        raise(ValueError('Expecting attention Tensor to have shape (q * k, k * n) = ({}, {}})'.format(q * k, k * n)))
 
     # Create one hot label vector for the support set
     y_onehot = torch.zeros(k * n, k)

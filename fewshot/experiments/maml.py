@@ -52,8 +52,7 @@ elif args.dataset == 'miniImageNet':
 else:
     raise(ValueError('Unsupported dataset'))
 
-param_str = f'{args.dataset}_order={args.order}_n={args.n}_k={args.k}_metabatch={args.meta_batch_size}_' \
-            f'train_steps={args.inner_train_steps}_val_steps={args.inner_val_steps}'
+param_str = '{}_order={}_n={}_k={}_metabatch={}_train_steps={}_val_steps={}'.format(args.dataset, args.order, args.n, args.k, args.meta_batch_size, args.inner_train_steps, args.inner_val_steps)
 print(param_str)
 
 
@@ -79,7 +78,7 @@ evaluation_taskloader = DataLoader(
 ############
 # Training #
 ############
-print(f'Training MAML on {args.dataset}...')
+print('Training MAML on {}...'.format(args.dataset))
 meta_model = FewShotClassifier(num_input_channels, args.k, fc_layer_size).to(device, dtype=torch.double)
 meta_optimiser = torch.optim.Adam(meta_model.parameters(), lr=args.meta_lr)
 loss_fn = nn.CrossEntropyLoss().to(device)
@@ -117,11 +116,11 @@ callbacks = [
         order=args.order,
     ),
     ModelCheckpoint(
-        filepath=PATH + f'/models/maml/{param_str}.pth',
-        monitor=f'val_{args.n}-shot_{args.k}-way_acc'
+        filepath=PATH + '/models/maml/{}.pth'.format(param_str),
+        monitor='val_{}-shot_{}-way_acc'.format(args.n, args.k)
     ),
-    ReduceLROnPlateau(patience=10, factor=0.5, monitor=f'val_loss'),
-    CSVLogger(PATH + f'/logs/maml/{param_str}.csv'),
+    ReduceLROnPlateau(patience=10, factor=0.5, monitor='val_loss'),
+    CSVLogger(PATH + '/logs/maml/{}.csv'.format(param_str)),
 ]
 
 
