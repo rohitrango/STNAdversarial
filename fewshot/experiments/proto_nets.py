@@ -116,13 +116,25 @@ stnmodel = None
 stnoptim = None
 print(args)
 if args.stn:
-    if args.stn == 1:
-        stnmodel = STNv0((3, 84, 84), args)
-    elif args.stn == 2:
-        stnmodel = STNv1((3, 84, 84), args)
-        args.stn_reg_coeff = 0
+    if args.dataset == 'miniImageNet':
+        if args.stn == 1:
+            stnmodel = STNv0((3, 84, 84), args)
+        elif args.stn == 2:
+            stnmodel = STNv1((3, 84, 84), args)
+            args.stn_reg_coeff = 0
+        else:
+            raise NotImplementedError
+    elif args.dataset == 'omniglot':
+        if args.stn == 1:
+            stnmodel = STNv0((1, 28, 28), args)
+        elif args.stn == 2:
+            stnmodel = STNv1((1, 28, 28), args)
+            args.stn_reg_coeff = 0
+        else:
+            raise NotImplementedError
     else:
         raise NotImplementedError
+
     stnmodel.to(device, dtype=torch.double)
     stnmodel = nn.DataParallel(stnmodel)
     # Get optimizer
