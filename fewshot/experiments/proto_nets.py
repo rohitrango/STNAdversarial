@@ -72,7 +72,7 @@ if args.dataset == 'omniglot':
     num_input_channels = 1
     drop_lr_every = 20
 elif args.dataset == 'miniImageNet':
-    n_epochs = 100
+    n_epochs = 80
     dataset_class = MiniImageNet
     num_input_channels = 3
     drop_lr_every = 40

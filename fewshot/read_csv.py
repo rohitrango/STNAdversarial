@@ -18,11 +18,11 @@ with open(args.file, 'r') as f:
     lines = [line for line in lines if line!=""]
     for i, line in enumerate(lines):
         if i>0:
-            accuracy.append(float(line.split(',')[-1].strip()))
-            loss.append(float(line.split(',')[-2].strip()))
+            accuracy.append(float(line.split(',')[-2].strip()))
+            loss.append(float(line.split(',')[-1].strip()))
 epochs = np.arange(len(loss))
-accuracy = np.array(accuracy)
-loss = np.array(loss)
+accuracy = np.array(accuracy)[:80]
+loss = np.array(loss)[:80]
 
 try:
     args.file = args.file.replace('.csv', '_stn_{}.csv'.format(args.N))
@@ -31,20 +31,20 @@ try:
         lines = [line for line in lines if line!=""]
         for i, line in enumerate(lines):
             if i>0:
-                stnaccuracy.append(float(line.split(',')[-1].strip()))
-                stnloss.append(float(line.split(',')[-2].strip()))
+                stnaccuracy.append(float(line.split(',')[-2].strip()))
+                stnloss.append(float(line.split(',')[-1].strip()))
 
-    stnloss = np.array(stnloss)
-    stnaccuracy = np.array(stnaccuracy)
+    stnloss = np.array(stnloss)[:80]
+    stnaccuracy = np.array(stnaccuracy)[:80]
     stnepochs = np.arange(len(stnloss))
 except:
     stnaccuracy = []
     stnloss = []
 
-print(loss)
-print(stnloss)
-print(np.max(loss))
-print(np.max(stnloss))
+print(accuracy)
+print(stnaccuracy)
+print(np.max(accuracy))
+print(np.max(stnaccuracy))
 plt.figure()
 #fig, ax = plt.subplots(1, 2, sharey=True)
 #ax[0].plot(epochs, loss, label="loss")
@@ -53,8 +53,8 @@ plt.figure()
 #ax[1].plot(stnepochs, stnaccuracy, label="stnAccuracy")
 #ax[0].legend()
 #ax[1].legend()
-plt.plot(loss)
-plt.plot(stnloss)
+plt.plot(accuracy)
+plt.plot(stnaccuracy)
 plt.legend(['baseline', 'stn'])
 
 #plt.show()
