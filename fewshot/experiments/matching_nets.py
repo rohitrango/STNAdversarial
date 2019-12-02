@@ -53,9 +53,7 @@ elif args.dataset == 'miniImageNet':
 else:
     raise(ValueError, 'Unsupported dataset')
 
-param_str = f'{args.dataset}_n={args.n_train}_k={args.k_train}_q={args.q_train}_' \
-            f'nv={args.n_test}_kv={args.k_test}_qv={args.q_test}_'\
-            f'dist={args.distance}_fce={args.fce}'
+param_str = '{}_n={}_k={}_q={}_nv={}_kv={}_qv={}_dist={}_fce={}'.format(args.dataset, args.n_train, args.k_train, args.q_train, args.n_test, args.k_test, args.q_test, args.distance, args.fce)
 
 
 #########
@@ -90,7 +88,7 @@ evaluation_taskloader = DataLoader(
 ############
 # Training #
 ############
-print(f'Training Matching Network on {args.dataset}...')
+print('Training Matching Network on {}...'.format(args.dataset))
 optimiser = Adam(model.parameters(), lr=1e-3)
 loss_fn = torch.nn.NLLLoss().cuda()
 
@@ -108,12 +106,12 @@ callbacks = [
         distance=args.distance
     ),
     ModelCheckpoint(
-        filepath=PATH + f'/models/matching_nets/{param_str}.pth',
-        monitor=f'val_{args.n_test}-shot_{args.k_test}-way_acc',
+        filepath=PATH + '/models/matching_nets/{}.pth'.format(param_str),
+        monitor='val_{}-shot_{}-way_acc'.format(args.n_test, args.k_test),
         # monitor=f'val_loss',
     ),
-    ReduceLROnPlateau(patience=20, factor=0.5, monitor=f'val_{args.n_test}-shot_{args.k_test}-way_acc'),
-    CSVLogger(PATH + f'/logs/matching_nets/{param_str}.csv'),
+    ReduceLROnPlateau(patience=20, factor=0.5, monitor='val_{}-shot_{}-way_acc'.format(args.n_test, args.k_test)),
+    CSVLogger(PATH + '/logs/matching_nets/{}.csv'.format(param_str)),
 ]
 
 fit(

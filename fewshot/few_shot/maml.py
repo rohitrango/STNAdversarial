@@ -26,7 +26,11 @@ def meta_gradient_step(model: Module,
                        inner_train_steps: int,
                        inner_lr: float,
                        train: bool,
-                       device: Union[str, torch.device]):
+                       device: Union[str, torch.device],
+                       stnmodel = None,
+                       stnoptim = None,
+                       args = None,
+                       ):
     """
     Perform a gradient step on a meta-learner.
 
