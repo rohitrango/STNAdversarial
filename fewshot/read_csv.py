@@ -5,8 +5,10 @@ import matplotlib.pyplot as plt
 parser = argparse.ArgumentParser()
 parser.add_argument('--file', required=True)
 parser.add_argument('--N', default="10", type=str)
+parser.add_argument('--last', default=80, type=int)
 
 args = parser.parse_args()
+last = args.last
 
 loss = []
 accuracy = []
@@ -21,8 +23,8 @@ with open(args.file, 'r') as f:
             accuracy.append(float(line.split(',')[-2].strip()))
             loss.append(float(line.split(',')[-1].strip()))
 epochs = np.arange(len(loss))
-accuracy = np.array(accuracy)[:80]
-loss = np.array(loss)[:80]
+accuracy = np.array(accuracy)[:last]
+loss = np.array(loss)[:last]
 
 try:
     args.file = args.file.replace('.csv', '_stn_{}.csv'.format(args.N))
@@ -34,8 +36,8 @@ try:
                 stnaccuracy.append(float(line.split(',')[-2].strip()))
                 stnloss.append(float(line.split(',')[-1].strip()))
 
-    stnloss = np.array(stnloss)[:80]
-    stnaccuracy = np.array(stnaccuracy)[:80]
+    stnloss = np.array(stnloss)[:last]
+    stnaccuracy = np.array(stnaccuracy)[:last]
     stnepochs = np.arange(len(stnloss))
 except:
     stnaccuracy = []

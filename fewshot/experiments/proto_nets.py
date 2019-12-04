@@ -48,7 +48,7 @@ parser.add_argument('--stnweightdecay', default=1e-5, type=float)
 
 # STNv1 params
 parser.add_argument('--scalediff', default=0.1, type=float)
-parser.add_argument('--theta', default=np.pi, type=float)
+parser.add_argument('--theta', default=180, type=float)
 parser.add_argument('--t', default=0.1, type=float)
 parser.add_argument('--fliphoriz', default=0.5, type=float)
 
@@ -56,6 +56,7 @@ parser.add_argument('--fliphoriz', default=0.5, type=float)
 parser.add_argument('--targetonly', default=0, type=int)
 
 args = parser.parse_args()
+args.theta = args.theta / 180.0 * np.pi
 
 ### Set seed
 np.random.seed(args.seed)
@@ -169,7 +170,7 @@ callbacks = [
         distance=args.distance
     ),
     ModelCheckpoint(
-        filepath=PATH + '/models/proto_nets/{}.pth'.format(param_str),
+        filepath='/serverdata/rohit/models/proto_nets/{}.pth'.format(param_str),
         monitor='val_{}-shot_{}-way_acc'.format(args.n_test, args.k_test)
     ),
     LearningRateScheduler(schedule=lr_schedule),
