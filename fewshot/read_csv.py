@@ -60,4 +60,4 @@ plt.plot(stnaccuracy)
 plt.legend(['baseline', 'stn'])
 
 #plt.show()
-plt.savefig('loss.png')
+plt.savefig('reward.png')

@@ -14,12 +14,10 @@ from few_shot.callbacks import *
 from few_shot.utils import setup_dirs
 from config import PATH
 
-
 setup_dirs()
 assert torch.cuda.is_available()
 device = torch.device('cuda')
 torch.backends.cudnn.benchmark = True
-
 
 ##############
 # Parameters #
@@ -38,6 +36,29 @@ parser.add_argument('--order', default=1, type=int)
 parser.add_argument('--epochs', default=50, type=int)
 parser.add_argument('--epoch-len', default=100, type=int)
 parser.add_argument('--eval-batches', default=20, type=int)
+
+parser.add_argument('--seed', default=42, type=int)
+parser.add_argument('--suffix', default='', type=str)
+
+# STN params
+parser.add_argument('--stn', default=0, type=int)
+parser.add_argument('--dropout', default=0.5, type=float)
+parser.add_argument('--stn_reg_coeff', default=10, type=float)
+parser.add_argument('--stn_hid_dim', default=32, type=int)
+parser.add_argument('--stnlr', default=1e-3, type=float)
+parser.add_argument('--stnweightdecay', default=1e-5, type=float)
+
+# STNv1 params
+parser.add_argument('--scalediff', default=0.1, type=float)
+parser.add_argument('--theta', default=180, type=float)
+parser.add_argument('--t', default=0.1, type=float)
+parser.add_argument('--fliphoriz', default=0.5, type=float)
+
+# Add more params
+parser.add_argument('--targetonly', default=0, type=int)
+
+args = parser.parse_args()
+args.theta = args.theta / 180.0 * np.pi
 
 args = parser.parse_args()
 
