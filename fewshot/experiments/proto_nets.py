@@ -43,7 +43,7 @@ parser.add_argument('--stn', default=0, type=int)
 parser.add_argument('--dropout', default=0.5, type=float)
 parser.add_argument('--stn_reg_coeff', default=10, type=float)
 parser.add_argument('--stn_hid_dim', default=32, type=int)
-parser.add_argument('--stnlr', default=1e-3, type=float)
+parser.add_argument('--stnlr', default=3e-4, type=float)
 parser.add_argument('--stnweightdecay', default=1e-5, type=float)
 
 # STNv1 params

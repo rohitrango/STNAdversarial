@@ -19,7 +19,11 @@ def matching_net_episode(model: Module,
                          q_queries: int,
                          distance: str,
                          fce: bool,
-                         train: bool):
+                         train: bool,
+                         args: None,
+                         stnmodel: None,
+                         stnoptim: None,
+                         ):
     """Performs a single training episode for a Matching Network.
 
     # Arguments

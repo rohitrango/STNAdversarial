@@ -12,6 +12,7 @@ from few_shot.models import FewShotClassifier
 from few_shot.train import fit
 from few_shot.callbacks import *
 from few_shot.utils import setup_dirs
+from few_shot.stn import STNv0, STNv1
 from config import PATH
 
 setup_dirs()
@@ -62,6 +63,12 @@ args.theta = args.theta / 180.0 * np.pi
 
 args = parser.parse_args()
 
+### Set seed
+np.random.seed(args.seed)
+torch.manual_seed(args.seed)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+
 if args.dataset == 'omniglot':
     dataset_class = OmniglotDataset
     fc_layer_size = 64
@@ -73,7 +80,12 @@ elif args.dataset == 'miniImageNet':
 else:
     raise(ValueError('Unsupported dataset'))
 
-param_str = '{}_order={}_n={}_k={}_metabatch={}_train_steps={}_val_steps={}'.format(args.dataset, args.order, args.n, args.k, args.meta_batch_size, args.inner_train_steps, args.inner_val_steps)
+param_str = '{}_order={}_n={}_k={}_metabatch={}_train_steps={}_val_steps={}_{}'.format(args.dataset, args.order, args.n, args.k, args.meta_batch_size, args.inner_train_steps, args.inner_val_steps, args.seed)
+if args.stn:
+    param_str += '_stn_{}'.format(args.stn_reg_coeff)
+
+if args.suffix != '':
+    param_str += '_{}'.format(args.suffix)
 print(param_str)
 
 
@@ -95,6 +107,36 @@ evaluation_taskloader = DataLoader(
     num_workers=8
 )
 
+
+#########
+# Model #
+#########
+stnmodel = None
+stnoptim = None
+print(args)
+if args.stn:
+    if args.dataset == 'miniImageNet':
+        if args.stn == 1:
+            stnmodel = STNv0((3, 84, 84), args)
+        elif args.stn == 2:
+            stnmodel = STNv1((3, 84, 84), args)
+            args.stn_reg_coeff = 0
+        else:
+            raise NotImplementedError
+    elif args.dataset == 'omniglot':
+        if args.stn == 1:
+            stnmodel = STNv0((1, 28, 28), args)
+        elif args.stn == 2:
+            stnmodel = STNv1((1, 28, 28), args)
+            args.stn_reg_coeff = 0
+        else:
+            raise NotImplementedError
+    else:
+        raise NotImplementedError
+
+    stnmodel.to(device, dtype=torch.double)
+    stnmodel = nn.DataParallel(stnmodel)
+    stnoptim = torch.optim.Adam(stnmodel.parameters(), lr=args.stnlr, weight_decay=args.stnweightdecay)
 
 ############
 # Training #
@@ -153,6 +195,9 @@ fit(
     dataloader=background_taskloader,
     prepare_batch=prepare_meta_batch(args.n, args.k, args.q, args.meta_batch_size),
     callbacks=callbacks,
+    stnmodel=stnmodel,
+    stnoptim=stnoptim,
+    args=args,
     metrics=['categorical_accuracy'],
     fit_function=meta_gradient_step,
     fit_function_kwargs={'n_shot': args.n, 'k_way': args.k, 'q_queries': args.q,

@@ -180,7 +180,7 @@ class STNVAE(nn.Module):
     which acts as mean and variance
     """
 
-    def __init__(self, xdim, hdim=64, dropout=0.5):
+    def __init__(self, xdim, hdim=16, dropout=0.5):
         """TODO: to be defined. """
         super(STNVAE, self).__init__()
         self.xdim = xdim

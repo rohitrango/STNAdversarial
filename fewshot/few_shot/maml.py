@@ -5,7 +5,10 @@ from torch.nn import Module
 from typing import Dict, List, Callable, Union
 
 from few_shot.core import create_nshot_task_label
+from few_shot.losses import IdentityTransformLoss
+from few_shot.stn import STNv0
 
+stnidentityloss = IdentityTransformLoss()
 
 def replace_grad(parameter_gradients, parameter_name):
     def replace_grad_(module):
@@ -52,6 +55,16 @@ def meta_gradient_step(model: Module,
         train: Whether to update the meta-learner weights at the end of the episode.
         device: Device on which to run computation
     """
+    if stnmodel:
+        if train:
+            stnmodel.train()
+            stnoptim.zero_grad()
+        else:
+            stnmodel.eval()
+    theta = []
+    info = None
+
+    # Check for meta parameters
     data_shape = x.shape[2:]
     create_graph = (True if order == 2 else False) and train
 
@@ -63,6 +76,13 @@ def meta_gradient_step(model: Module,
         # Hence when we iterate over the first  dimension we are iterating through the meta batches
         x_task_train = meta_batch[:n_shot * k_way]
         x_task_val = meta_batch[n_shot * k_way:]
+
+        # Modify some examples
+        if stnmodel and train:
+            x_task_train, theta_train, info_train = stnmodel(x_task_train, 0)
+            x_task_val, theta_val, info_val = stnmodel(x_task_val, args.targetonly)
+            theta.append(theta_train)
+            theta.append(theta_val)
 
         # Create a fast model using the current meta model weights
         fast_weights = OrderedDict(model.named_parameters())
@@ -97,6 +117,11 @@ def meta_gradient_step(model: Module,
         named_grads = {name: g for ((name, _), g) in zip(fast_weights.items(), gradients)}
         task_gradients.append(named_grads)
 
+
+    # Append all thetas
+    if stnmodel:
+        theta = torch.cat(theta, 0)
+
     if order == 1:
         if train:
             sum_task_gradients = {k: torch.stack([grad[k] for grad in task_gradients]).mean(dim=0)
@@ -108,11 +133,20 @@ def meta_gradient_step(model: Module,
                 )
 
             model.train()
-            optimiser.zero_grad()
             # Dummy pass in order to create `loss` variable
             # Replace dummy gradients with mean task gradients using hooks
             logits = model(torch.zeros((k_way, ) + data_shape).to(device, dtype=torch.double))
             loss = loss_fn(logits, create_nshot_task_label(k_way, 1).to(device))
+
+            # Update STN here if present
+            if train and stnmodel:
+                stnoptim.zero_grad()
+                stnloss = -loss + args.stn_reg_coeff * stnidentityloss(theta)
+                stnloss.backward(retain_graph=True)
+                stnoptim.step()
+
+            # Update parameters
+            optimiser.zero_grad()
             loss.backward()
             optimiser.step()
 

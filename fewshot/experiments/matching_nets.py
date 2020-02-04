@@ -36,6 +36,7 @@ parser.add_argument('--q-test', default=1, type=int)
 parser.add_argument('--lstm-layers', default=1, type=int)
 parser.add_argument('--unrolling-steps', default=2, type=int)
 args = parser.parse_args()
+print(args)
 
 evaluation_episodes = 1000
 episodes_per_epoch = 100

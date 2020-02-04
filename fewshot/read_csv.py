@@ -43,10 +43,19 @@ except:
     stnaccuracy = []
     stnloss = []
 
+n = min(len(stnaccuracy), len(accuracy))
+if n > 0:
+    accuracy = accuracy[:n]
+    stnaccuracy = stnaccuracy[:n]
 print(accuracy)
 print(stnaccuracy)
-print(np.max(accuracy))
-print(np.max(stnaccuracy))
+#print(np.max(accuracy))
+#print(np.max(stnaccuracy))
+print(np.max(accuracy[-1]), np.max(accuracy), len(accuracy))
+try:
+    print(np.max(stnaccuracy[-1]), np.max(stnaccuracy), len(stnaccuracy))
+except:
+    pass
 plt.figure()
 #fig, ax = plt.subplots(1, 2, sharey=True)
 #ax[0].plot(epochs, loss, label="loss")
