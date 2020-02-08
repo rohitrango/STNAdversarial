@@ -11,6 +11,8 @@ from few_shot.matching import matching_net_episode
 from few_shot.train import fit
 from few_shot.callbacks import *
 from few_shot.utils import setup_dirs
+from few_shot.stn import STNv0, STNv1
+from torch import nn
 from config import PATH
 
 
@@ -35,7 +37,37 @@ parser.add_argument('--q-train', default=15, type=int)
 parser.add_argument('--q-test', default=1, type=int)
 parser.add_argument('--lstm-layers', default=1, type=int)
 parser.add_argument('--unrolling-steps', default=2, type=int)
+
+
+parser.add_argument('--seed', default=42, type=int)
+parser.add_argument('--suffix', default='', type=str)
+
+# STN params
+parser.add_argument('--stn', default=0, type=int)
+parser.add_argument('--dropout', default=0.5, type=float)
+parser.add_argument('--stn_reg_coeff', default=10, type=float)
+parser.add_argument('--stn_hid_dim', default=32, type=int)
+parser.add_argument('--stnlr', default=3e-4, type=float)
+parser.add_argument('--stnweightdecay', default=1e-5, type=float)
+
+# STNv1 params
+parser.add_argument('--scalediff', default=0.1, type=float)
+parser.add_argument('--theta', default=180, type=float)
+parser.add_argument('--t', default=0.1, type=float)
+parser.add_argument('--fliphoriz', default=0.5, type=float)
+
+# Add more params
+parser.add_argument('--targetonly', default=0, type=int)
+
 args = parser.parse_args()
+args.theta = args.theta / 180.0 * np.pi
+
+### Set seed
+np.random.seed(args.seed)
+torch.manual_seed(args.seed)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+
 print(args)
 
 evaluation_episodes = 1000
@@ -54,7 +86,14 @@ elif args.dataset == 'miniImageNet':
 else:
     raise(ValueError, 'Unsupported dataset')
 
-param_str = '{}_n={}_k={}_q={}_nv={}_kv={}_qv={}_dist={}_fce={}'.format(args.dataset, args.n_train, args.k_train, args.q_train, args.n_test, args.k_test, args.q_test, args.distance, args.fce)
+param_str = '{}_n={}_k={}_q={}_nv={}_kv={}_qv={}_dist={}_fce={}'.format(args.dataset, args.n_train, args.k_train, args.q_train, args.n_test, args.k_test, args.q_test, args.distance, args.fce) \
+                + '_{}'.format(args.seed)
+if args.stn:
+    param_str += '_stn_{}'.format(args.stn_reg_coeff)
+
+if args.suffix != '':
+    param_str += '_{}'.format(args.suffix)
+print(param_str)
 
 
 #########
@@ -68,6 +107,33 @@ model = MatchingNetwork(args.n_train, args.k_train, args.q_train, args.fce, num_
                         device=device)
 model.to(device, dtype=torch.double)
 
+stnmodel = None
+stnoptim = None
+if args.stn:
+    if args.dataset == 'miniImageNet':
+        if args.stn == 1:
+            stnmodel = STNv0((3, 84, 84), args)
+        elif args.stn == 2:
+            stnmodel = STNv1((3, 84, 84), args)
+            args.stn_reg_coeff = 0
+        else:
+            raise NotImplementedError
+    elif args.dataset == 'omniglot':
+        if args.stn == 1:
+            stnmodel = STNv0((1, 28, 28), args)
+        elif args.stn == 2:
+            stnmodel = STNv1((1, 28, 28), args)
+            args.stn_reg_coeff = 0
+        else:
+            raise NotImplementedError
+    else:
+        raise NotImplementedError
+
+    stnmodel.to(device, dtype=torch.double)
+    stnmodel = nn.DataParallel(stnmodel)
+    # Get optimizer
+    stnoptim = Adam(stnmodel.parameters(), lr=args.stnlr,
+            weight_decay=args.stnweightdecay)
 
 ###################
 # Create datasets #
@@ -85,11 +151,12 @@ evaluation_taskloader = DataLoader(
     num_workers=4
 )
 
-
 ############
 # Training #
 ############
 print('Training Matching Network on {}...'.format(args.dataset))
+if args.stn:
+    print('Training with STN')
 optimiser = Adam(model.parameters(), lr=1e-3)
 loss_fn = torch.nn.NLLLoss().cuda()
 
@@ -104,6 +171,9 @@ callbacks = [
         taskloader=evaluation_taskloader,
         prepare_batch=prepare_nshot_task(args.n_test, args.k_test, args.q_test),
         fce=args.fce,
+        args=args,
+        stnmodel=None,
+        stnoptim=None,
         distance=args.distance
     ),
     ModelCheckpoint(
@@ -123,6 +193,9 @@ fit(
     dataloader=background_taskloader,
     prepare_batch=prepare_nshot_task(args.n_train, args.k_train, args.q_train),
     callbacks=callbacks,
+    stnmodel=stnmodel,
+    stnoptim=stnoptim,
+    args=args,
     metrics=['categorical_accuracy'],
     fit_function=matching_net_episode,
     fit_function_kwargs={'n_shot': args.n_train, 'k_way': args.k_train, 'q_queries': args.q_train, 'train': True,

@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 parser = argparse.ArgumentParser()
 parser.add_argument('--file', required=True)
 parser.add_argument('--N', default="10", type=str)
-parser.add_argument('--last', default=80, type=int)
+parser.add_argument('--last', default=380, type=int)
 
 args = parser.parse_args()
 last = args.last

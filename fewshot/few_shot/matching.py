@@ -7,6 +7,10 @@ from torch.nn.modules.loss import _Loss as Loss
 from config import EPSILON
 from few_shot.core import create_nshot_task_label
 from few_shot.utils import pairwise_distances
+from few_shot.losses import IdentityTransformLoss
+from few_shot.stn import STNv0
+
+stnidentityloss = IdentityTransformLoss()
 
 
 def matching_net_episode(model: Module,
@@ -47,10 +51,27 @@ def matching_net_episode(model: Module,
         # Zero gradients
         model.train()
         optimiser.zero_grad()
+        if stnmodel:
+            stnmodel.train()
+            stnoptim.zero_grad()
     else:
         model.eval()
+        if stnmodel:
+            stnmodel.eval()
 
     # Embed all samples
+    theta = None
+    info = None
+    if stnmodel:
+        if args.targetonly:
+            supnum = n_shot*k_way
+            xsup, thetasup, infosup = stnmodel(x[:supnum], 0)
+            xtar, thetatar, info = stnmodel(x[supnum:], 1)
+            x = torch.cat([xsup, xtar], 0)
+            theta = torch.cat([thetasup, thetatar], 0)
+        else:
+            x, theta, info = stnmodel(x)
+
     embeddings = model.encoder(x)
 
     # Samples are ordered by the NShotWrapper class as follows:
@@ -92,6 +113,14 @@ def matching_net_episode(model: Module,
     # Clip predictions for numerical stability
     clipped_y_pred = y_pred.clamp(EPSILON, 1 - EPSILON)
     loss = loss_fn(clipped_y_pred.log(), y)
+
+    if train and stnmodel:
+        stnoptim.zero_grad()
+        stnloss = -loss + args.stn_reg_coeff * stnidentityloss(theta)
+        stnloss.backward(retain_graph=True)
+        stnoptim.step()
+        # Reset optimizer zero grad
+        optimiser.zero_grad()
 
     if train:
         # Backpropagate gradients
