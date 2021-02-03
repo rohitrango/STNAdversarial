@@ -1,7 +1,7 @@
 atomicwrites==1.2.1
 attrs==18.2.0
 backcall==0.1.0
-bleach==3.0.2
+bleach==3.3.0
 cloudpickle==0.6.1
 cycler==0.10.0
 dask==0.20.0
